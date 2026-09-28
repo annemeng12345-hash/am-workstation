@@ -558,21 +558,14 @@ function addExpense(){
 let newsCache={};
 async function loadNews(){
   document.getElementById('newsLoading').style.display='block';
-  try{
-    const r=await fetch('https://api.vvhan.com/api/hotlist/wbHot');
-    const d=await r.json();
-    if(d&&d.data){
-      newsCache.all=d.data.slice(0,30).map((item,i)=>{
-        const tags=['society','economy','tech','world'];
-        const tag=tags[i%tags.length];
-        const tagNames={society:'社会',economy:'经济',tech:'科技',world:'国际'};
-        return{title:item.title||item.name,desc:item.desc||'',hot:item.hot||'',url:item.url||'#',tag,tagName:tagNames[tag]};
-      });
-      renderNews('all');
-    }
-  }catch(e){
-    document.getElementById('newsList').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">热点加载失败，请检查网络</div>';
+  var apis=['https://api.allorigins.win/raw?url='+encodeURIComponent('https://api.vvhan.com/api/hotlist/wbHot'),'https://api.vvhan.com/api/hotlist/wbHot'];
+  var ok=false;
+  for(var u=0;u<apis.length;u++){
+    try{var r=await fetch(apis[u]);var d=await r.json();
+      if(d&&d.data){newsCache.all=d.data.slice(0,30).map(function(item,i){var tags=['society','economy','tech','world'],tag=tags[i%tags.length],tn={society:'社会',economy:'经济',tech:'科技',world:'国际'};return{title:item.title||item.name,hot:item.hot||'',url:item.url||'#',tag:tag,tagName:tn[tag]}});renderNews('all');ok=true;break}
+    }catch(e){}
   }
+  if(!ok)document.getElementById('newsList').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">热点加载失败，请稍后重试</div>';
   document.getElementById('newsLoading').style.display='none';
 }
 function renderNews(cat){
