@@ -558,11 +558,22 @@ function addExpense(){
 let newsCache={};
 async function loadNews(){
   document.getElementById('newsLoading').style.display='block';
-  var apis=['https://api.allorigins.win/raw?url='+encodeURIComponent('https://api.vvhan.com/api/hotlist/wbHot'),'https://api.vvhan.com/api/hotlist/wbHot'];
   var ok=false;
-  for(var u=0;u<apis.length;u++){
-    try{var r=await fetch(apis[u]);var d=await r.json();
-      if(d&&d.data){newsCache.all=d.data.slice(0,30).map(function(item,i){var tags=['society','economy','tech','world'],tag=tags[i%tags.length],tn={society:'社会',economy:'经济',tech:'科技',world:'国际'};return{title:item.title||item.name,hot:item.hot||'',url:item.url||'#',tag:tag,tagName:tn[tag]}});renderNews('all');ok=true;break}
+  var proxies=['https://api.allorigins.win/get?url=','https://api.codetabs.com/v1/proxy?quest='];
+  var src='https://top.baidu.com/api/board?platform=wise&tab=realtime';
+  for(var p=0;p<proxies.length&&!ok;p++){
+    try{
+      var r=await fetch(proxies[p]+encodeURIComponent(src));
+      var raw=await r.json();
+      var d=typeof raw.contents==='string'?JSON.parse(raw.contents):raw;
+      if(d&&d.data&&d.data.cards){
+        var items=[];
+        d.data.cards.forEach(function(card){if(card.content)card.content.forEach(function(c){if(c.content)c.content.forEach(function(item){items.push(item)})})});
+        var tagArr=['society','economy','tech','world'];
+        var tn={society:'社会',economy:'经济',tech:'科技',world:'国际'};
+        newsCache.all=items.slice(0,30).map(function(item,i){var tag=tagArr[i%tagArr.length];return{title:item.word||item.query||item.name||'',hot:item.hotScore||item.show||'',url:item.url||item.rawUrl||'#',tag:tag,tagName:tn[tag]}});
+        renderNews('all');ok=true;
+      }
     }catch(e){}
   }
   if(!ok)document.getElementById('newsList').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">热点加载失败，请稍后重试</div>';
