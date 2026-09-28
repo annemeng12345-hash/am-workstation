@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a3a2a">
+<title>AM 工作台</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f4f7f2;--bg2:#eaf0e6;--sidebar:#1a3a2a;--sidebar-hover:#244a36;
+  --green:#2d6a4f;--green-light:#52b788;--green-pale:#b7e4c7;--green-dark:#1b4332;
+  --accent:#40916c;--accent2:#74c69d;--text:#1a1a1a;--text2:#555;--text3:#888;
+  --white:#fff;--card:#fff;--border:#d8e4d0;--shadow:0 2px 12px rgba(26,58,42,.08);
+  --radius:14px;--radius-sm:8px;
+}
+html,body{height:100%;font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,textarea,select{font-family:inherit;outline:none}
+.app{display:flex;height:100dvh;width:100%}
+
+/* Sidebar */
+.sidebar{width:220px;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;flex-shrink:0;transition:transform .3s ease;z-index:100;position:relative}
+.sidebar-header{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-header h1{font-family:'Playfair Display',serif;font-size:22px;letter-spacing:1px;color:var(--green-pale)}
+.sidebar-header p{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px}
+.sidebar-nav{flex:1;padding:12px 0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;cursor:pointer;transition:all .2s;font-size:14px;color:rgba(255,255,255,.7);position:relative}
+.nav-item:hover{background:var(--sidebar-hover);color:#fff}
+.nav-item.active{background:var(--sidebar-hover);color:var(--green-pale);font-weight:500}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:24px;background:var(--green-light);border-radius:0 3px 3px 0}
+.nav-item .icon{font-size:18px;width:24px;text-align:center}
+.nav-item .remove-btn{margin-left:auto;opacity:0;font-size:16px;color:rgba(255,255,255,.4);transition:opacity .2s}
+.nav-item:hover .remove-btn{opacity:1}
+.nav-item .remove-btn:hover{color:#ff6b6b}
+.sidebar-footer{padding:12px 20px;border-top:1px solid rgba(255,255,255,.1)}
+.add-nav-btn{display:flex;align-items:center;gap:8px;padding:10px 0;font-size:13px;color:rgba(255,255,255,.5);cursor:pointer;transition:color .2s}
+.add-nav-btn:hover{color:var(--green-pale)}
+.sidebar-brand{padding:12px 20px;text-align:center}
+.sidebar-brand a{font-size:10px;color:rgba(255,255,255,.25);text-decoration:none;letter-spacing:1px;transition:color .3s}
+.sidebar-brand a:hover{color:rgba(255,255,255,.5)}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{display:flex;align-items:center;padding:16px 24px;background:var(--white);border-bottom:1px solid var(--border);flex-shrink:0;gap:12px}
+.menu-toggle{display:none;font-size:22px;color:var(--green);padding:4px}
+.topbar-title{font-size:18px;font-weight:600;color:var(--green-dark)}
+.topbar-date{font-size:13px;color:var(--text3)}
+.content{flex:1;overflow-y:auto;padding:20px 24px 80px}
+
+/* Cards */
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px;border:1px solid var(--border)}
+.card-title{font-size:15px;font-weight:600;color:var(--green-dark);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .emoji{font-size:18px}
+
+/* 每日计划 */
+.habits-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.habit-chip{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:var(--radius-sm);background:var(--bg2);cursor:pointer;transition:all .2s;font-size:13px;user-select:none}
+.habit-chip.done{background:var(--green-pale);color:var(--green-dark)}
+.habit-chip.done .check{color:var(--green)}
+.habit-chip .check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:all .2s}
+.habit-chip.done .check{border-color:var(--green);background:var(--green)}
+.habit-chip.done .check::after{content:'✓';color:#fff;font-size:11px}
+
+.kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
+.kanban-col{min-width:200px;flex:1;background:var(--bg2);border-radius:var(--radius-sm);padding:12px}
+.kanban-col-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.kanban-col-title .count{background:var(--green-pale);color:var(--green-dark);font-size:11px;padding:2px 8px;border-radius:10px}
+.kanban-card{background:var(--white);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.04);cursor:grab;border-left:3px solid var(--accent2)}
+.kanban-card.priority-high{border-left-color:#e76f51}
+.kanban-card.priority-mid{border-left-color:#f4a261}
+
+.task-input-row{display:flex;gap:8px;margin-top:10px}
+.task-input-row input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg2)}
+.task-input-row input:focus{border-color:var(--accent2)}
+.task-input-row button{padding:10px 18px;background:var(--green);color:#fff;border-radius:var(--radius-sm);font-size:13px;font-weight:500;transition:background .2s}
+.task-input-row button:hover{background:var(--green-dark)}
+
+/* 每月花销 */
+.budget-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.budget-box{padding:16px;border-radius:var(--radius-sm);text-align:center}
+.budget-box.total{background:linear-gradient(135deg,var(--green),var(--accent))}
+.budget-box.spent{background:var(--bg2)}
+.budget-box.remain{background:var(--green-pale)}
+.budget-box .label{font-size:11px;color:var(--text3)}
+.budget-box.total .label{color:rgba(255,255,255,.8)}
+.budget-box .value{font-size:22px;font-weight:700;margin-top:4px}
+.budget-box.total .value{color:#fff}
+.budget-box.spent .value{color:#e76f51}
+.budget-box.remain .value{color:var(--green)}
+
+.expense-list{list-style:none}
+.expense-item{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px;gap:10px}
+.expense-item:last-child{border-bottom:none}
+.expense-cat{padding:4px 10px;border-radius:12px;font-size:11px;background:var(--bg2);color:var(--text2)}
+.expense-note{flex:1;color:var(--text)}
+.expense-amount{font-weight:600;color:#e76f51}
+.expense-date{font-size:11px;color:var(--text3)}
+
+.add-expense-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.add-expense-form input,.add-expense-form select{padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg2)}
+.add-expense-form button{grid-column:1/-1;padding:10px;background:var(--green);color:#fff;border-radius:var(--radius-sm);font-size:13px;font-weight:500}
+
+/* 热点 */
+.news-tabs{display:flex;gap:8px;margin-bottom:14px}
+.news-tab{padding:6px 16px;border-radius:20px;font-size:13px;background:var(--bg2);color:var(--text2);cursor:pointer;transition:all .2s}
+.news-tab.active{background:var(--green);color:#fff}
+.news-item{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .2s}
+.news-item:last-child{border-bottom:none}
+.news-rank{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;color:var(--text3);background:var(--bg2)}
+.news-rank.top{background:var(--green);color:#fff}
+.news-item-content h4{font-size:14px;font-weight:500;line-height:1.5;margin-bottom:4px}
+.news-item-content p{font-size:12px;color:var(--text3)}
+.news-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;margin-right:6px}
+.news-tag.society{background:#fde8e8;color:#c0392b}
+.news-tag.economy{background:#e8f5e9;color:#27ae60}
+.news-tag.tech{background:#e3f2fd;color:#2980b9}
+.news-tag.world{background:#fff3e0;color:#e67e22}
+
+/* 运动 */
+.exercise-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.exercise-card{border-radius:var(--radius);overflow:hidden;background:var(--card);box-shadow:var(--shadow);cursor:pointer;transition:transform .2s,box-shadow .2s;border:1px solid var(--border)}
+.exercise-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,58,42,.12)}
+.exercise-thumb{height:100px;background:linear-gradient(135deg,var(--green-pale),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:36px}
+.exercise-info{padding:12px}
+.exercise-info h4{font-size:13px;font-weight:600;margin-bottom:4px}
+.exercise-info p{font-size:11px;color:var(--text3)}
+.exercise-info .dur{font-size:11px;color:var(--accent);font-weight:500;margin-top:6px}
+
+/* 灵感 */
+.idea-grid{columns:2;column-gap:12px}
+.idea-card{break-inside:avoid;background:var(--card);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;border:1px solid var(--border);box-shadow:var(--shadow);position:relative}
+.idea-card .idea-text{font-size:13px;line-height:1.7}
+.idea-card .idea-time{font-size:11px;color:var(--text3);margin-top:8px}
+.idea-card .idea-del{position:absolute;top:8px;right:10px;font-size:14px;color:var(--text3);opacity:0;transition:opacity .2s}
+.idea-card:hover .idea-del{opacity:1}
+.idea-input{display:flex;gap:8px;margin-bottom:16px}
+.idea-input textarea{flex:1;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;resize:none;min-height:60px;background:var(--bg2)}
+.idea-input button{padding:0 20px;background:var(--green);color:#fff;border-radius:var(--radius-sm);font-size:20px}
+
+/* Sidebar add modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border-radius:var(--radius);padding:24px;width:90%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-size:16px;margin-bottom:16px;color:var(--green-dark)}
+.modal input{width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;margin-bottom:12px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.modal-btns button{padding:8px 20px;border-radius:var(--radius-sm);font-size:13px}
+.modal-btns .cancel{color:var(--text3)}
+.modal-btns .confirm{background:var(--green);color:#fff}
+
+/* Progress ring */
+.progress-ring{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.ring-svg{width:60px;height:60px;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--bg2);stroke-width:6}
+.ring-fg{fill:none;stroke:var(--green-light);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.ring-label{font-size:13px;color:var(--text2)}
+.ring-label strong{display:block;font-size:20px;color:var(--green-dark)}
+
+/* Mobile */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);width:260px;box-shadow:4px 0 20px rgba(0,0,0,.2)}
+  .sidebar.open{transform:translateX(0)}
+  .menu-toggle{display:block}
+  .content{padding:16px 16px 80px}
+  .kanban{flex-direction:column}
+  .kanban-col{min-width:auto}
+  .idea-grid{columns:1}
+  .budget-summary{grid-template-columns:1fr 1fr 1fr}
+  .add-expense-form{grid-template-columns:1fr}
+  .exercise-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .habits-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99;display:none}
+.backdrop.show{display:block}
+
+/* Page sections hidden by default */
+.page{display:none}
+.page.active{display:block}
+
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.card{animation:fadeUp .4s ease both}
+.card:nth-child(2){animation-delay:.05s}
+.card:nth-child(3){animation-delay:.1s}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent2)}
+
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.share-btn{width:34px;height:34px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .2s;border:1px solid var(--border)}
+.share-btn:hover{background:var(--green-pale);border-color:var(--accent2)}
+.qr-modal{text-align:center}
+.qr-modal h3{margin-bottom:8px}
+.qr-modal .qr-sub{font-size:12px;color:var(--text3);margin-bottom:16px}
+.qr-modal .qr-box{display:inline-block;padding:16px;background:#fff;border-radius:12px;border:2px solid var(--border);margin-bottom:16px}
+.qr-modal .qr-box img{display:block}
+.qr-modal .qr-url{font-size:11px;color:var(--text3);word-break:break-all;margin-bottom:12px;padding:8px 12px;background:var(--bg2);border-radius:var(--radius-sm);text-align:left}
+.qr-modal .qr-copy{padding:8px 24px;background:var(--green);color:#fff;border-radius:var(--radius-sm);font-size:13px;font-weight:500;transition:background .2s}
+.qr-modal .qr-copy:hover{background:var(--green-dark)}
+.qr-modal .qr-tip{font-size:11px;color:var(--accent);margin-top:14px;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1>AM</h1>
+      <p>个人工作台</p>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-footer">
+      <div class="add-nav-btn" onclick="showAddNav()">
+        <span>＋</span><span>添加板块</span>
+      </div>
+    </div>
+    <div class="sidebar-brand"><a href="https://deerflow.tech" target="_blank">✦ Deerflow</a></div>
+  </aside>
+  <div class="backdrop" id="backdrop" onclick="closeSidebar()"></div>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <span class="topbar-title" id="topbarTitle">每日计划</span>
+      <div class="topbar-right"><span class="topbar-date" id="topbarDate"></span><button class="share-btn" onclick="showQR()" title="分享二维码">📤</button></div>
+    </header>
+    <div class="content" id="content">
+      <!-- 每日计划 -->
+      <div class="page active" id="page-daily">
+        <div class="progress-ring">
+          <svg class="ring-svg" viewBox="0 0 44 44">
+            <circle class="ring-bg" cx="22" cy="22" r="18"/>
+            <circle class="ring-fg" id="habitRing" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1"/>
+          </svg>
+          <div class="ring-label"><strong id="habitPct">0%</strong>今日完成度</div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">🌿</span>个人日常</div>
+          <div class="habits-grid" id="habitsGrid"></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">📋</span>完成看板</div>
+          <div class="kanban" id="taskKanban">
+            <div class="kanban-col" data-col="todo">
+              <div class="kanban-col-title">待办 <span class="count" id="todoCount">0</span></div>
+              <div id="todoList"></div>
+            </div>
+            <div class="kanban-col" data-col="doing">
+              <div class="kanban-col-title">进行中 <span class="count" id="doingCount">0</span></div>
+              <div id="doingList"></div>
+            </div>
+            <div class="kanban-col" data-col="done">
+              <div class="kanban-col-title">已完成 <span class="count" id="doneCount">0</span></div>
+              <div id="doneList"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">✍️</span>创作任务</div>
+          <div id="creativeList"></div>
+          <div class="task-input-row">
+            <input type="text" id="creativeInput" placeholder="添加新任务…" onkeydown="if(event.key==='Enter')addCreative()">
+            <button onclick="addCreative()">添加</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 每月花销 -->
+      <div class="page" id="page-expense">
+        <div class="card">
+          <div class="card-title"><span class="emoji">💰</span>本月概览 — <select id="expMonth" onchange="renderExpense()" style="border:none;background:none;font-size:14px;font-weight:600;color:var(--green-dark)"></select></div>
+          <div class="budget-summary">
+            <div class="budget-box total"><div class="label">预算</div><div class="value" id="budgetTotal">¥5000</div></div>
+            <div class="budget-box spent"><div class="label">已花</div><div class="value" id="budgetSpent">¥0</div></div>
+            <div class="budget-box remain"><div class="label">剩余</div><div class="value" id="budgetRemain">¥5000</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">📝</span>记账</div>
+          <div class="add-expense-form">
+            <input type="number" id="expAmount" placeholder="金额">
+            <select id="expCat">
+              <option value="买菜">🥬 买菜</option><option value="外食">🍜 外食</option>
+              <option value="购物">🛒 购物</option><option value="交通">🚌 交通</option>
+              <option value="日用">🏠 日用</option><option value="其他">📦 其他</option>
+            </select>
+            <input type="text" id="expNote" placeholder="备注" style="grid-column:1/-1">
+            <button onclick="addExpense()">记一笔</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="emoji">📊</span>明细</div>
+          <ul class="expense-list" id="expenseList"></ul>
+        </div>
+      </div>
+
+      <!-- 热点 -->
+      <div class="page" id="page-news">
+        <div class="news-tabs" id="newsTabs">
+          <div class="news-tab active" data-cat="all">全部</div>
+          <div class="news-tab" data-cat="society">社会</div>
+          <div class="news-tab" data-cat="economy">经济</div>
+          <div class="news-tab" data-cat="tech">科技</div>
+          <div class="news-tab" data-cat="world">国际</div>
+        </div>
+        <div class="card">
+          <div id="newsList"></div>
+          <div style="text-align:center;padding:16px;color:var(--text3);font-size:13px" id="newsLoading">加载中…</div>
+        </div>
+      </div>
+
+      <!-- 运动 -->
+      <div class="page" id="page-exercise">
+        <div class="card">
+          <div class="card-title"><span class="emoji">🏋️‍♀️</span>新手塑形推荐</div>
+          <div class="exercise-grid" id="exerciseGrid"></div>
+        </div>
+      </div>
+
+      <!-- 灵感 -->
+      <div class="page" id="page-idea">
+        <div class="idea-input">
+          <textarea id="ideaInput" placeholder="记录你的灵感…"></textarea>
+          <button onclick="addIdea()">＋</button>
+        </div>
+        <div class="idea-grid" id="ideaGrid"></div>
+      </div>
+
+      <!-- 自定义页 -->
+      <div class="page" id="page-custom">
+        <div class="card" style="text-align:center;padding:60px 20px;color:var(--text3)">
+          <div style="font-size:48px;margin-bottom:16px">📝</div>
+          <p>这是你自定义的板块，内容待开发</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="addNavModal">
+  <div class="modal">
+    <h3>添加新板块</h3>
+    <input type="text" id="navNameInput" placeholder="板块名称" maxlength="10">
+    <div class="modal-btns">
+      <button class="cancel" onclick="hideAddNav()">取消</button>
+      <button class="confirm" onclick="confirmAddNav()">添加</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Data Store (localStorage) ──
+const S = k => JSON.parse(localStorage.getItem('am_'+k)||'null');
+const W = (k,v) => localStorage.setItem('am_'+k, JSON.stringify(v));
+
+
+// ── QR Code ──
+function showQR(){
+  var url=window.location.href;
+  var q=qrcode(0,'M');q.addData(url);q.make();
+  document.getElementById('qrBox').innerHTML=q.createImgTag(6,0);
+  document.getElementById('qrUrl').textContent=url;
+  document.getElementById('qrModal').classList.add('show');
+}
+function hideQR(){document.getElementById('qrModal').classList.remove('show')}
+function copyUrl(){
+  navigator.clipboard.writeText(window.location.href).then(function(){
+    var b=document.querySelector('.qr-copy');b.textContent='✓ 已复制';setTimeout(function(){b.textContent='复制链接'},1500);
+  });
+}
+
+// ── Nav ──
+const defaultNav = [
+  {id:'daily',name:'每日计划',icon:'📅',fixed:true},
+  {id:'expense',name:'每月花销',icon:'💰',fixed:true},
+  {id:'news',name:'热点',icon:'🔥',fixed:true},
+  {id:'exercise',name:'运动',icon:'💪',fixed:true},
+  {id:'idea',name:'灵感',icon:'💡',fixed:true},
+];
+let navItems = S('nav') || defaultNav;
+let activeNav = S('activeNav') || 'daily';
+
+function renderNav(){
+  const el = document.getElementById('sidebarNav');
+  el.innerHTML = navItems.map(n=>`
+    <div class="nav-item ${n.id===activeNav?'active':''}" onclick="switchPage('${n.id}')">
+      <span class="icon">${n.icon}</span><span>${n.name}</span>
+      ${n.fixed?'':`<span class="remove-btn" onclick="event.stopPropagation();removeNav('${n.id}')">×</span>`}
+    </div>`).join('');
+}
+function switchPage(id){
+  activeNav = id; W('activeNav',id);
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const builtIn = ['daily','expense','news','exercise','idea'];
+  const pageId = builtIn.includes(id) ? `page-${id}` : 'page-custom';
+  document.getElementById(pageId).classList.add('active');
+  const nav = navItems.find(n=>n.id===id);
+  document.getElementById('topbarTitle').textContent = nav?nav.name:id;
+  renderNav(); closeSidebar();
+  if(id==='news') loadNews();
+}
+function removeNav(id){
+  if(!confirm('确定移除此板块？')) return;
+  navItems = navItems.filter(n=>n.id!==id); W('nav',navItems);
+  if(activeNav===id) switchPage(navItems[0].id);
+  else renderNav();
+}
+function showAddNav(){document.getElementById('addNavModal').classList.add('show');document.getElementById('navNameInput').focus()}
+function hideAddNav(){document.getElementById('addNavModal').classList.remove('show');document.getElementById('navNameInput').value=''}
+function confirmAddNav(){
+  const name=document.getElementById('navNameInput').value.trim();
+  if(!name) return;
+  const id='custom_'+Date.now();
+  navItems.push({id,name,icon:'📌',fixed:false}); W('nav',navItems);
+  hideAddNav(); switchPage(id);
+}
+
+// ── Sidebar toggle ──
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('show')}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('backdrop').classList.remove('show')}
+
+// ── 每日计划 — 习惯 ──
+const defaultHabits = [
+  {id:'exec',name:'每日执行',done:false},{id:'water',name:'2L水',done:false},
+  {id:'sleep',name:'23点睡',done:false},{id:'wake',name:'7点起床',done:false}
+];
+function getToday(){return new Date().toISOString().slice(0,10)}
+function getHabits(){
+  let h = S('habits_'+getToday());
+  if(!h){h=defaultHabits.map(x=>({...x,done:false}));W('habits_'+getToday(),h)}
+  return h;
+}
+function renderHabits(){
+  const habits=getHabits();
+  document.getElementById('habitsGrid').innerHTML=habits.map(h=>`
+    <div class="habit-chip ${h.done?'done':''}" onclick="toggleHabit('${h.id}')">
+      <span class="check"></span><span>${h.name}</span>
+    </div>`).join('');
+  const done=habits.filter(h=>h.done).length, total=habits.length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('habitPct').textContent=pct+'%';
+  const circ=113.1;
+  document.getElementById('habitRing').style.strokeDashoffset=circ-(circ*pct/100);
+}
+function toggleHabit(id){
+  const h=getHabits(); const item=h.find(x=>x.id===id);
+  if(item){item.done=!item.done;W('habits_'+getToday(),h);renderHabits()}
+}
+
+// ── 每日计划 — 看板 ──
+function getTasks(){return S('tasks')||{todo:[],doing:[],done:[]}}
+function saveTasks(t){W('tasks',t)}
+function renderKanban(){
+  const t=getTasks();
+  ['todo','doing','done'].forEach(col=>{
+    const list=document.getElementById(col+'List');
+    list.innerHTML=t[col].map((task,i)=>`
+      <div class="kanban-card" draggable="true" data-col="${col}" data-idx="${i}"
+        ondragstart="dragTask(event)" onclick="moveTask('${col}',${i})">
+        ${task}
+      </div>`).join('');
+    document.getElementById(col+'Count').textContent=t[col].length;
+  });
+}
+function moveTask(fromCol,idx){
+  const t=getTasks();
+  const cols=['todo','doing','done'];
+  const nextIdx=(cols.indexOf(fromCol)+1)%3;
+  const item=t[fromCol].splice(idx,1)[0];
+  t[cols[nextIdx]].push(item);saveTasks(t);renderKanban();
+}
+let dragData={};
+function dragTask(e){dragData={col:e.target.dataset.col,idx:+e.target.dataset.idx};e.dataTransfer.effectAllowed='move'}
+document.querySelectorAll('.kanban-col').forEach(col=>{
+  col.ondragover=e=>e.preventDefault();
+  col.ondrop=e=>{
+    e.preventDefault();
+    const target=col.dataset.col;
+    if(target===dragData.col)return;
+    const t=getTasks();const item=t[dragData.col].splice(dragData.idx,1)[0];
+    t[target].push(item);saveTasks(t);renderKanban();
+  }
+});
+
+// ── 创作任务 ──
+function getCreatives(){return S('creatives')||[]}
+function renderCreatives(){
+  const list=getCreatives();
+  document.getElementById('creativeList').innerHTML=list.map((c,i)=>`
+    <div class="kanban-card" style="border-left-color:var(--accent2)">
+      <span>${c}</span>
+      <span style="float:right;cursor:pointer;color:var(--text3)" onclick="removeCreative(${i})">×</span>
+    </div>`).join('');
+}
+function addCreative(){
+  const inp=document.getElementById('creativeInput');
+  const v=inp.value.trim(); if(!v)return;
+  const list=getCreatives();list.push(v);W('creatives',list);
+  const tasks=getTasks();tasks.todo.push(v);saveTasks(tasks);
+  inp.value='';renderCreatives();renderKanban();
+}
+function removeCreative(i){const list=getCreatives();list.splice(i,1);W('creatives',list);renderCreatives()}
+
+// ── 每月花销 ──
+function curMonth(){return new Date().toISOString().slice(0,7)}
+function getExpenses(m){return S('exp_'+m)||[]}
+function getBudget(m){return S('budget_'+m)||5000}
+function renderExpense(){
+  const m=document.getElementById('expMonth').value||curMonth();
+  const exps=getExpenses(m);
+  const total=exps.reduce((s,e)=>s+e.amount,0);
+  const budget=getBudget(m);
+  document.getElementById('budgetTotal').textContent='¥'+budget;
+  document.getElementById('budgetSpent').textContent='¥'+total;
+  document.getElementById('budgetRemain').textContent='¥'+(budget-total);
+  document.getElementById('expenseList').innerHTML=exps.map((e,i)=>`
+    <li class="expense-item">
+      <span class="expense-cat">${e.cat}</span>
+      <span class="expense-note">${e.note||'-'}</span>
+      <span class="expense-amount">-¥${e.amount}</span>
+      <span class="expense-date">${e.date.slice(5)}</span>
+    </li>`).join('')||'<li style="padding:20px;text-align:center;color:var(--text3)">暂无记录</li>';
+}
+function initExpMonth(){
+  const sel=document.getElementById('expMonth');
+  const now=new Date();
+  for(let i=0;i<6;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const v=d.toISOString().slice(0,7);
+    sel.innerHTML+=`<option value="${v}" ${i===0?'selected':''}>${d.getMonth()+1}月</option>`;
+  }
+}
+function addExpense(){
+  const m=document.getElementById('expMonth').value||curMonth();
+  const amount=+document.getElementById('expAmount').value;
+  if(!amount||amount<=0) return;
+  const cat=document.getElementById('expCat').value;
+  const note=document.getElementById('expNote').value.trim();
+  const exps=getExpenses(m);
+  exps.unshift({amount,cat,note,date:new Date().toISOString().slice(0,10)});
+  W('exp_'+m,exps);
+  document.getElementById('expAmount').value='';
+  document.getElementById('expNote').value='';
+  renderExpense();
+}
+
+// ── 热点 ──
+let newsCache={};
+async function loadNews(){
+  document.getElementById('newsLoading').style.display='block';
+  try{
+    const r=await fetch('https://api.vvhan.com/api/hotlist/wbHot');
+    const d=await r.json();
+    if(d&&d.data){
+      newsCache.all=d.data.slice(0,30).map((item,i)=>{
+        const tags=['society','economy','tech','world'];
+        const tag=tags[i%tags.length];
+        const tagNames={society:'社会',economy:'经济',tech:'科技',world:'国际'};
+        return{title:item.title||item.name,desc:item.desc||'',hot:item.hot||'',url:item.url||'#',tag,tagName:tagNames[tag]};
+      });
+      renderNews('all');
+    }
+  }catch(e){
+    document.getElementById('newsList').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">热点加载失败，请检查网络</div>';
+  }
+  document.getElementById('newsLoading').style.display='none';
+}
+function renderNews(cat){
+  if(!newsCache.all)return;
+  const items=cat==='all'?newsCache.all:newsCache.all.filter(n=>n.tag===cat);
+  document.getElementById('newsList').innerHTML=items.map((n,i)=>`
+    <div class="news-item" onclick="window.open('${n.url}','_blank')">
+      <span class="news-rank ${i<3?'top':''}">${i+1}</span>
+      <div class="news-item-content">
+        <h4>${n.title}</h4>
+        <p><span class="news-tag ${n.tag}">${n.tagName}</span>${n.hot?'🔥 '+n.hot:''}</p>
+      </div>
+    </div>`).join('');
+}
+document.getElementById('newsTabs').addEventListener('click',e=>{
+  const tab=e.target.closest('.news-tab');if(!tab)return;
+  document.querySelectorAll('.news-tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active'); renderNews(tab.dataset.cat);
+});
+
+// ── 运动 ──
+const exercises=[
+  {name:'臀腿激活',src:'韩小四',dur:'15min',emoji:'🦵',level:'入门'},
+  {name:'马甲线训练',src:'韩小四',dur:'20min',emoji:'💪',level:'入门'},
+  {name:'天鹅臂',src:'美丽芭蕾',dur:'15min',emoji:'🦢',level:'入门'},
+  {name:'美背塑形',src:'美丽芭蕾',dur:'12min',emoji:'🔙',level:'入门'},
+  {name:'瘦腿拉伸',src:'欧阳春晓',dur:'10min',emoji:'🧘‍♀️',level:'零基础'},
+  {name:'全身燃脂',src:'欧阳春晓',dur:'25min',emoji:'🔥',level:'入门'},
+  {name:'胸部塑形',src:'韩小四',dur:'12min',emoji:'✨',level:'入门'},
+  {name:'肩背放松',src:'美丽芭蕾',dur:'10min',emoji:'🌸',level:'零基础'},
+];
+function renderExercise(){
+  document.getElementById('exerciseGrid').innerHTML=exercises.map(e=>`
+    <div class="exercise-card">
+      <div class="exercise-thumb">${e.emoji}</div>
+      <div class="exercise-info">
+        <h4>${e.name}</h4>
+        <p>${e.src} · ${e.level}</p>
+        <div class="dur">⏱ ${e.dur}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── 灵感 ──
+function getIdeas(){return S('ideas')||[]}
+function renderIdeas(){
+  document.getElementById('ideaGrid').innerHTML=getIdeas().map((idea,i)=>`
+    <div class="idea-card">
+      <div class="idea-text">${idea.text}</div>
+      <div class="idea-time">${idea.time}</div>
+      <span class="idea-del" onclick="removeIdea(${i})">×</span>
+    </div>`).join('');
+}
+function addIdea(){
+  const inp=document.getElementById('ideaInput');
+  const v=inp.value.trim();if(!v)return;
+  const ideas=getIdeas();
+  ideas.unshift({text:v,time:new Date().toLocaleString('zh-CN')});
+  W('ideas',ideas);inp.value='';renderIdeas();
+}
+function removeIdea(i){const ideas=getIdeas();ideas.splice(i,1);W('ideas',ideas);renderIdeas()}
+
+// ── Date ──
+function showDate(){
+  const d=new Date();
+  const days=['日','一','二','三','四','五','六'];
+  document.getElementById('topbarDate').textContent=
+    `${d.getMonth()+1}月${d.getDate()}日 周${days[d.getDay()]}`;
+}
+
+// ── Init ──
+showDate(); renderNav(); renderHabits(); renderKanban(); renderCreatives();
+initExpMonth(); renderExpense(); renderExercise(); renderIdeas();
+switchPage(activeNav);
+
+// ── PWA Registration ──
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+</script>
+
+<div class="modal-overlay" id="qrModal" onclick="if(event.target===this)hideQR()">
+  <div class="modal qr-modal" style="max-width:320px">
+    <h3>📱 扫码访问 AM 工作台</h3>
+    <p class="qr-sub">手机扫描后可「添加到主屏幕」安装为App</p>
+    <div class="qr-box" id="qrBox"></div>
+    <div class="qr-url" id="qrUrl"></div>
+    <button class="qr-copy" onclick="copyUrl()">复制链接</button>
+    <p class="qr-tip">📱 iPhone: Safari → 分享 → 添加到主屏幕<br>📱 Android: Chrome → 菜单 → 安装应用</p>
+  </div>
+</div>
+</body>
+</html>
